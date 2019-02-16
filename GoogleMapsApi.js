@@ -1,62 +1,72 @@
 /**
- * Render HBS
- * A utilitiy to compile a handlebars template from a data source on
- * the client side and render it to the DOM. Uses Fetch API so polyfill that
- * if need be.
+ * GoogleMapsApi
+ * Class to load google maps api (with key)
+ * and global Callback to init map after resolution of promise.
  *
- * @author stephen scaff
- * @useage RenderHBS.init(yoDATA, yoRenderEl, yoTemplate)
+ * @exports {GoogleMapsApi}
+ * @example MapApi = new GoogleMapsApi();
+ *          MapApi.load().then(() => {});
  */
-const RenderHBS = (() => {
+class GoogleMapsApi {
 
-  return {
+  /**
+   * Constructor
+   * @property {string} apiKey
+   * @property {string} callbackName
+   */
+  constructor() {
 
-    /**
-     * Init
-     * Just an init that passes params to the render function
-     * @param data {obj} - The data source
-     * @param renderEl {string} - DOM Element
-     * @pram template {string} - Path to the hbs file
-     */
-    init(data, renderEl, template){
-      this.render(data, renderEl, template);
-    },
+    // api key for google maps
+    this.apiKey = 'xxxxxxxxxxxxxxxxxxxxxxx';
 
-    /**
-     * Render HBS Template to
-     * Renders our hbs template with our data
-     * @param {hbsTemplate} string - path to template
-     * @param {renderEl} element - element to render to
-     * @param {Object} data - data object
-     */
-    render(data, renderEl, hbsTemplate) {
-      RenderHBS.getTemplate(hbsTemplate, function(template) {
-        renderEl.insertAdjacentHTML('beforeend', template(data));
-      });
-    },
+    // Set global callback
+    if (!window._GoogleMapsApi) {
+      this.callbackName = '_GoogleMapsApi.mapLoaded';
+      window._GoogleMapsApi = this;
+      window._GoogleMapsApi.mapLoaded = this.mapLoaded.bind(this);
+    }
+  }
 
-    /**
-     * Get Template
-     * Get's an external HBS template via fetch and compiles
-     * with our data.
-     * @param {string} path - path to our template file
-     * @param {function} callback - our callback function to pass the response
-     */
-     getTemplate(path, callback) {
-       var source, template;
+  /**
+   * Load
+   * Create script element with google maps
+   * api url, containing api key and callback for
+   * map init.
+   * @return {promise}
+   * @this {_GoogleMapsApi}
+   */
+  load() {
+    if (!this.promise) {
+      this.promise = new Promise(resolve => {
+        this.resolve = resolve;
 
-       fetch(path)
-        .then(response => response.text())
-        .then( (data) => {
-          source = data;
-          template = Handlebars.compile(source);
-          if (callback) callback(template);
-        })
-        .catch((error) => {
-          console.log(error);
+        if (typeof window.google === 'undefined') {
+          const script = document.createElement('script');
+          script.src = `//maps.googleapis.com/maps/api/js?key=${this.apiKey}&callback=${this.callbackName}`;
+          script.async = true;
+          document.body.append(script);
+
+        } else {
+          this.resolve();
+        }
       });
     }
-  };
-})();
 
-export default RenderHBS;
+    return this.promise;
+  }
+
+  /**
+   * mapLoaded
+   * Global callback for loaded/resolved map instance.
+   * @this {_GoogleMapsApi}
+   *
+   */
+  mapLoaded() {
+
+    if (this.resolve) {
+      this.resolve();
+    }
+  }
+}
+
+export default GoogleMapsApi;
